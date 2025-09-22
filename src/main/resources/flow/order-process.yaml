@@ -1,0 +1,28 @@
+id: order-process
+start: START
+states:
+  - id: START
+    action: startAction
+    next:
+      - to: VALIDATE
+  - id: VALIDATE
+    action: validateAction
+    next:
+      - to: APPROVE
+        when: "#{context['amount'] <= 1000}"
+      - to: MANUAL_REVIEW
+        when: "#{context['amount'] > 1000}"
+    onError: ERROR
+  - id: APPROVE
+    action: approveAction
+    next:
+      - to: COMPLETE
+  - id: MANUAL_REVIEW
+    action: reviewAction
+    next:
+      - to: APPROVE
+        when: "#{context['reviewPassed'] == true}"
+  - id: COMPLETE
+    action: completeAction
+  - id: ERROR
+    action: errorAction
