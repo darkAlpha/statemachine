@@ -1,7 +1,6 @@
-package org.kipp.statemachine;
+package org.kipp.statemachine.engine;
 
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 public interface ActionHandler {
 

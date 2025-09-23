@@ -1,25 +1,24 @@
 package org.kipp.statemachine.engine;
 
 import lombok.RequiredArgsConstructor;
-import org.kipp.statemachine.ActionHandler;
-import org.kipp.statemachine.template.FlowTemplate;
-import org.kipp.statemachine.template.StateTemplate;
-import org.kipp.statemachine.template.TransitionTemplate;
+import lombok.extern.slf4j.Slf4j;
+import org.kipp.statemachine.engine.template.FlowTemplate;
+import org.kipp.statemachine.engine.template.StateTemplate;
+import org.kipp.statemachine.engine.template.TransitionTemplate;
 import org.springframework.context.ApplicationContext;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Optional;
 
-
-import java.util.Map;
-import java.util.Optional;
-
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class StateMachine {
+    public static final String CONTEXT = "context";
     private final Map<String, FlowTemplate> templates;
     private final ApplicationContext ctx;
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -31,7 +30,7 @@ public class StateMachine {
     }
 
     private String executeState(FlowTemplate template, String stateId, Map<String, Object> ctxMap) {
-        System.out.println("➡️ State: " + stateId);
+        if(log.isDebugEnabled()) System.out.println("➡️ State: " + stateId);
 
         StateTemplate state = template.getStates()
                 .stream().filter(s -> s.getId().equals(stateId))
@@ -44,7 +43,7 @@ public class StateMachine {
                 handler.execute(ctxMap);
             }
         } catch (Exception e) {
-            System.err.println("❌ Error in state " + stateId + ": " + e.getMessage());
+            if(log.isDebugEnabled()) System.err.println("❌ Error in state " + stateId + ": " + e.getMessage());
             if (state.getOnError() != null) {
                 return executeState(template, state.getOnError(), ctxMap);
             }
@@ -52,14 +51,19 @@ public class StateMachine {
         }
 
         if (state.getNext() == null || state.getNext().isEmpty()) {
-            System.out.println("✅ Flow completed at: " + stateId);
+            if(log.isDebugEnabled()) System.out.println("✅ Flow completed at: " + stateId);
             return stateId;
         }
 
         // evaluate transitions
         for (TransitionTemplate t : state.getNext()) {
-            if (t.getWhen() == null || Boolean.TRUE.equals(
-                    parser.parseExpression(t.getWhen()).getValue(Map.class, ctxMap, Boolean.class))) {
+            if (t.getWhen() == null) {
+                return executeState(template, t.getTo(), ctxMap);
+            }
+            StandardEvaluationContext evalCtx = new StandardEvaluationContext();
+            evalCtx.setVariable(CONTEXT, ctxMap);
+            Boolean match = parser.parseExpression(t.getWhen()).getValue(evalCtx, Boolean.class);
+            if(Boolean.TRUE.equals(match)) {
                 return executeState(template, t.getTo(), ctxMap);
             }
         }

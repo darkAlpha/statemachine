@@ -1,8 +1,9 @@
 package org.kipp.statemachine.engine;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import lombok.RequiredArgsConstructor;
-import org.kipp.statemachine.template.FlowTemplate;
+import org.kipp.statemachine.engine.template.FlowTemplate;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;

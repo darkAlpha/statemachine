@@ -1,4 +1,4 @@
-package org.kipp.statemachine.template;
+package org.kipp.statemachine.engine.template;
 
 import lombok.Data;
 
