@@ -18,7 +18,7 @@ public class FlowTemplateLoader {
     public Map<String, FlowTemplate> loadAll() {
         try {
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-            Resource[] resources = resolver.getResources("classpath:flows/*.yml");
+            Resource[] resources = resolver.getResources("classpath:flows/*.yaml");
             Map<String, FlowTemplate> templates = new HashMap<>();
             for (Resource resource : resources) {
                 FlowTemplate flow = mapper.readValue(resource.getInputStream(), FlowTemplate.class);
