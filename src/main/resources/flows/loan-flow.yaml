@@ -1,0 +1,31 @@
+id: loan-flow
+start: start
+states:
+  - id: start
+    parallel: true
+    join: decision        # 👈 where to merge after all branches finish
+    next:
+      - to: checkIncome
+      - to: checkCredit
+
+  - id: checkIncome
+    next:
+      - to: approve
+        when: "#context['income'] > 5000"
+
+  - id: checkCredit
+    next:
+      - to: reject
+        when: "#context['score'] < 600"
+      - to: reject
+
+  - id: approve
+    next:
+      - to: decision
+  - id: reject
+    next:
+      - to: decision
+  - id: decision          # 👈 join state
+    next:
+      - to: final
+  - id: final

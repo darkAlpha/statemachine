@@ -9,6 +9,8 @@ public class StateTemplate {
     private String id;
     private List<TransitionTemplate> next;
     private String action;   // Bean name of the ActionHandler
+    private boolean parallel = false;
+    private String join;
     private String onError;  // Optional error route
 }
 

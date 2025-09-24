@@ -11,17 +11,23 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.*;
 
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class StateMachine {
     public static final String CONTEXT = "context";
+
     private final Map<String, FlowTemplate> templates;
     private final ApplicationContext ctx;
     private final ExpressionParser parser = new SpelExpressionParser();
+
+    // ✅ Executor injected (tunable pool)
+    private final ExecutorService executor = Executors.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors() * 2
+    );
 
     public String run(String templateId, Map<String, Object> context) {
         FlowTemplate template = Optional.ofNullable(templates.get(templateId))
@@ -30,32 +36,57 @@ public class StateMachine {
     }
 
     private String executeState(FlowTemplate template, String stateId, Map<String, Object> ctxMap) {
-        if(log.isDebugEnabled()) System.out.println("➡️ State: " + stateId);
+        log.info("➡️ State: {}", stateId);
 
         StateTemplate state = template.getStates()
                 .stream().filter(s -> s.getId().equals(stateId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("State not found: " + stateId));
 
-        try {
-            if (state.getAction() != null) {
-                ActionHandler handler = ctx.getBean(state.getAction(), ActionHandler.class);
-                handler.execute(ctxMap);
-            }
-        } catch (Exception e) {
-            if(log.isDebugEnabled()) System.err.println("❌ Error in state " + stateId + ": " + e.getMessage());
-            if (state.getOnError() != null) {
-                return executeState(template, state.getOnError(), ctxMap);
-            }
-            throw new RuntimeException("Action failed with no onError route", e);
-        }
+//        try {
+//            if (state.getAction() != null) {
+//                ActionHandler handler = ctx.getBean(state.getAction(), ActionHandler.class);
+//                handler.execute(ctxMap);
+//            }
+//        } catch (Exception e) {
+//            log.error("❌ Error in state {}: {}", stateId, e.getMessage());
+//            if (state.getOnError() != null) {
+//                return executeState(template, state.getOnError(), ctxMap);
+//            }
+//            throw new RuntimeException("Action failed with no onError route", e);
+//        }
 
         if (state.getNext() == null || state.getNext().isEmpty()) {
-            if(log.isDebugEnabled()) System.out.println("✅ Flow completed at: " + stateId);
+            log.info("✅ Flow completed at: {}", stateId);
             return stateId;
         }
 
-        // evaluate transitions
+        // ✅ Parallel branch handling
+        if (state.isParallel()) {
+            if (state.getJoin() == null) {
+                throw new IllegalStateException("Parallel state " + stateId + " missing join target");
+            }
+
+            List<CompletableFuture<String>> futures = new ArrayList<>();
+            for (TransitionTemplate t : state.getNext()) {
+                String nextState = t.getTo();
+                futures.add(CompletableFuture.supplyAsync(
+                        () -> executeState(template, nextState, ctxMap),
+                        executor // ✅ custom executor instead of commonPool
+                ));
+            }
+
+            try {
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException("Parallel execution failed", e);
+            }
+
+            log.info("🔀 All parallel branches from {} joined at {}", stateId, state.getJoin());
+            return executeState(template, state.getJoin(), ctxMap);
+        }
+
+        // ✅ Sequential transitions (SpEL conditions)
         for (TransitionTemplate t : state.getNext()) {
             if (t.getWhen() == null) {
                 return executeState(template, t.getTo(), ctxMap);
@@ -63,11 +94,16 @@ public class StateMachine {
             StandardEvaluationContext evalCtx = new StandardEvaluationContext();
             evalCtx.setVariable(CONTEXT, ctxMap);
             Boolean match = parser.parseExpression(t.getWhen()).getValue(evalCtx, Boolean.class);
-            if(Boolean.TRUE.equals(match)) {
+            if (Boolean.TRUE.equals(match)) {
                 return executeState(template, t.getTo(), ctxMap);
             }
         }
+
         throw new IllegalStateException("No valid transition from state: " + stateId);
     }
-}
 
+    // ✅ Shutdown hook for graceful exit
+    public void shutdown() {
+        executor.shutdown();
+    }
+}

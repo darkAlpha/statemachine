@@ -1,4 +1,4 @@
-package org.kipp.statemachine.engine;
+package org.kipp.statemachine.engine.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;

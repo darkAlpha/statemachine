@@ -1,0 +1,33 @@
+id: scoring-flow
+start: checkCredit
+states:
+  - id: checkCredit
+    action: checkCreditAction
+    next:
+      - to: decision
+
+  - id: decision
+    parallel: true
+    join: joinCheck
+    next:
+      - to: creditScoring
+      - to: fraudCheck
+
+  - id: creditScoring
+    action: creditScoringAction
+    next:
+      - to: joinCheck
+
+  - id: fraudCheck
+    action: fraudCheckAction
+    next:
+      - to: joinCheck
+
+  - id: joinCheck
+    action: joinCheckAction
+    next:
+      - to: approveLoan
+
+  - id: approveLoan
+    action: approveLoanAction
+
