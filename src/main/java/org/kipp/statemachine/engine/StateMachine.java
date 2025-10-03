@@ -24,7 +24,7 @@ public class StateMachine {
     private final ApplicationContext ctx;
     private final ExpressionParser parser = new SpelExpressionParser();
 
-    // ✅ Executor injected (tunable pool)
+    // ✅ Executor for parallel states
     private final ExecutorService executor = Executors.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors() * 2
     );
@@ -32,10 +32,18 @@ public class StateMachine {
     public String run(String templateId, Map<String, Object> context) {
         FlowTemplate template = Optional.ofNullable(templates.get(templateId))
                 .orElseThrow(() -> new IllegalArgumentException("Template not found: " + templateId));
-        return executeState(template, template.getStart(), context);
+
+        // ✅ One evaluation context per flow run
+        StandardEvaluationContext evalCtx = new StandardEvaluationContext();
+        evalCtx.setVariable(CONTEXT, context);
+
+        return executeState(template, template.getStart(), context, evalCtx);
     }
 
-    private String executeState(FlowTemplate template, String stateId, Map<String, Object> ctxMap) {
+    private String executeState(FlowTemplate template,
+                                String stateId,
+                                Map<String, Object> ctxMap,
+                                StandardEvaluationContext evalCtx) {
         log.info("➡️ State: {}", stateId);
 
         StateTemplate state = template.getStates()
@@ -51,7 +59,7 @@ public class StateMachine {
         } catch (Exception e) {
             log.error("❌ Error in state {}: {}", stateId, e.getMessage());
             if (state.getOnError() != null) {
-                return executeState(template, state.getOnError(), ctxMap);
+                return executeState(template, state.getOnError(), ctxMap, evalCtx);
             }
             throw new RuntimeException("Action failed with no onError route", e);
         }
@@ -61,7 +69,7 @@ public class StateMachine {
             return stateId;
         }
 
-        // ✅ Parallel branch handling
+        // ✅ Parallel handling
         if (state.isParallel()) {
             if (state.getJoin() == null) {
                 throw new IllegalStateException("Parallel state " + stateId + " missing join target");
@@ -71,8 +79,8 @@ public class StateMachine {
             for (TransitionTemplate t : state.getNext()) {
                 String nextState = t.getTo();
                 futures.add(CompletableFuture.supplyAsync(
-                        () -> executeState(template, nextState, ctxMap),
-                        executor // ✅ custom executor instead of commonPool
+                        () -> executeState(template, nextState, ctxMap, evalCtx),
+                        executor
                 ));
             }
 
@@ -83,26 +91,24 @@ public class StateMachine {
             }
 
             log.info("🔀 All parallel branches from {} joined at {}", stateId, state.getJoin());
-            return executeState(template, state.getJoin(), ctxMap);
+            return executeState(template, state.getJoin(), ctxMap, evalCtx);
         }
 
-        // ✅ Sequential transitions (SpEL conditions)
+        // ✅ Sequential transitions using cached SpEL
         for (TransitionTemplate t : state.getNext()) {
-            if (t.getWhen() == null) {
-                return executeState(template, t.getTo(), ctxMap);
+            if (t.getCompiledWhen() == null) {
+                return executeState(template, t.getTo(), ctxMap, evalCtx);
             }
-            StandardEvaluationContext evalCtx = new StandardEvaluationContext();
-            evalCtx.setVariable(CONTEXT, ctxMap);
-            Boolean match = parser.parseExpression(t.getWhen()).getValue(evalCtx, Boolean.class);
+            Boolean match = t.getCompiledWhen().getValue(evalCtx, Boolean.class);
             if (Boolean.TRUE.equals(match)) {
-                return executeState(template, t.getTo(), ctxMap);
+                return executeState(template, t.getTo(), ctxMap, evalCtx);
             }
         }
 
         throw new IllegalStateException("No valid transition from state: " + stateId);
     }
 
-    // ✅ Shutdown hook for graceful exit
+    // ✅ Graceful shutdown
     public void shutdown() {
         executor.shutdown();
     }

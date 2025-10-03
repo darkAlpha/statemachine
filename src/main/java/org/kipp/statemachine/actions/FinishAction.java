@@ -14,6 +14,7 @@ public class FinishAction implements ActionHandler {
         try {
             log.info("Starting FinishAction");
             Thread.sleep(50);
+            log.info("{}", context.get("state"));
             log.info("Finished FinishAction");
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
