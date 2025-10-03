@@ -1,0 +1,21 @@
+id: test
+start: start
+states:
+  - id: start
+    action: startAction
+    parallel: true
+    join: finish
+    next:
+      - to: parallel1
+      - to: parallel2
+
+  - id: parallel1
+    action: parallelAction1
+
+  - id: parallel2
+    action: parallelAction2
+
+  - id: finish
+    action: finishAction
+
+

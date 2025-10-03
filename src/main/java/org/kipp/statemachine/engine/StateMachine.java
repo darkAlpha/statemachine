@@ -43,18 +43,18 @@ public class StateMachine {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("State not found: " + stateId));
 
-//        try {
-//            if (state.getAction() != null) {
-//                ActionHandler handler = ctx.getBean(state.getAction(), ActionHandler.class);
-//                handler.execute(ctxMap);
-//            }
-//        } catch (Exception e) {
-//            log.error("❌ Error in state {}: {}", stateId, e.getMessage());
-//            if (state.getOnError() != null) {
-//                return executeState(template, state.getOnError(), ctxMap);
-//            }
-//            throw new RuntimeException("Action failed with no onError route", e);
-//        }
+        try {
+            if (state.getAction() != null) {
+                ActionHandler handler = ctx.getBean(state.getAction(), ActionHandler.class);
+                handler.execute(ctxMap);
+            }
+        } catch (Exception e) {
+            log.error("❌ Error in state {}: {}", stateId, e.getMessage());
+            if (state.getOnError() != null) {
+                return executeState(template, state.getOnError(), ctxMap);
+            }
+            throw new RuntimeException("Action failed with no onError route", e);
+        }
 
         if (state.getNext() == null || state.getNext().isEmpty()) {
             log.info("✅ Flow completed at: {}", stateId);
