@@ -2,7 +2,6 @@ package org.kipp.statemachine.engine.configuration;
 
 
 
-import org.kipp.statemachine.engine.FlowTemplateLoader;
 import org.kipp.statemachine.engine.template.FlowTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
