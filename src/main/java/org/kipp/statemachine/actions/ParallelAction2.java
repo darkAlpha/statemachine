@@ -15,6 +15,7 @@ public class ParallelAction2 implements ActionHandler {
         try {
             log.info("Starting parallel process 2");
             Thread.sleep(5000);
+            context.put("state", "parallel2");
             log.info("Finished parallel process 2");
         } catch (InterruptedException e) {
             throw new RuntimeException(e);

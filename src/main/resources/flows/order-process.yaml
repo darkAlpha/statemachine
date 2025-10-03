@@ -9,9 +9,9 @@ states:
     action: validateAction
     next:
       - to: APPROVE
-        when: "#{context['amount'] <= 1000}"
+        when: "#context['amount'] <= 1000"
       - to: MANUAL_REVIEW
-        when: "#{context['amount'] > 1000}"
+        when: "#context['amount'] > 1000"
     onError: ERROR
   - id: APPROVE
     action: approveAction
@@ -21,7 +21,7 @@ states:
     action: reviewAction
     next:
       - to: APPROVE
-        when: "#{context['reviewPassed'] == true}"
+        when: "#context['reviewPassed'] == true"
   - id: COMPLETE
     action: completeAction
   - id: ERROR
