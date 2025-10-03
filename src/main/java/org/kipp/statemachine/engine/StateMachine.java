@@ -2,6 +2,8 @@ package org.kipp.statemachine.engine;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.kipp.statemachine.engine.merge.ContextMerger;
+import org.kipp.statemachine.engine.merge.MergeStrategy;
 import org.kipp.statemachine.engine.template.FlowTemplate;
 import org.kipp.statemachine.engine.template.StateTemplate;
 import org.kipp.statemachine.engine.template.TransitionTemplate;
@@ -22,6 +24,7 @@ public class StateMachine {
 
     private final Map<String, FlowTemplate> templates;
     private final ApplicationContext ctx;
+    private final MergeStrategy mergeStrategy;   // ✅ injected strategy
     private final ExpressionParser parser = new SpelExpressionParser();
 
     // ✅ Executor for parallel states
@@ -69,26 +72,41 @@ public class StateMachine {
             return stateId;
         }
 
-        // ✅ Parallel handling
+        // ✅ Parallel handling with merge
         if (state.isParallel()) {
             if (state.getJoin() == null) {
                 throw new IllegalStateException("Parallel state " + stateId + " missing join target");
             }
 
-            List<CompletableFuture<String>> futures = new ArrayList<>();
+            List<CompletableFuture<Map<String, Object>>> futures = new ArrayList<>();
+
             for (TransitionTemplate t : state.getNext()) {
                 String nextState = t.getTo();
-                futures.add(CompletableFuture.supplyAsync(
-                        () -> executeState(template, nextState, ctxMap, evalCtx),
-                        executor
-                ));
+                // ✅ Clone context per branch
+                Map<String, Object> branchCtx = new HashMap<>(ctxMap);
+
+                futures.add(CompletableFuture.supplyAsync(() -> {
+                    executeState(template, nextState, branchCtx, evalCtx);
+                    return branchCtx;
+                }, executor));
             }
 
+            List<Map<String, Object>> results = new ArrayList<>();
             try {
                 CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
+                for (CompletableFuture<Map<String, Object>> f : futures) {
+                    results.add(f.get());
+                }
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException("Parallel execution failed", e);
             }
+
+            // ✅ Merge branch contexts into shared context
+            ContextMerger merger = new ContextMerger(mergeStrategy);
+            Map<String, Object> merged = merger.merge(results);
+
+            ctxMap.clear();
+            ctxMap.putAll(merged);  // update shared context
 
             log.info("🔀 All parallel branches from {} joined at {}", stateId, state.getJoin());
             return executeState(template, state.getJoin(), ctxMap, evalCtx);
