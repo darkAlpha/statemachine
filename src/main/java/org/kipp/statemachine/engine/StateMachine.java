@@ -8,13 +8,14 @@ import org.kipp.statemachine.engine.template.FlowTemplate;
 import org.kipp.statemachine.engine.template.StateTemplate;
 import org.kipp.statemachine.engine.template.TransitionTemplate;
 import org.springframework.context.ApplicationContext;
-import org.springframework.expression.ExpressionParser;
-import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Component
 @Slf4j
@@ -25,7 +26,6 @@ public class StateMachine {
     private final Map<String, FlowTemplate> templates;
     private final ApplicationContext ctx;
     private final MergeStrategy mergeStrategy;   // ✅ injected strategy
-    private final ExpressionParser parser = new SpelExpressionParser();
 
     // ✅ Executor for parallel states
     private final ExecutorService executor = Executors.newFixedThreadPool(
