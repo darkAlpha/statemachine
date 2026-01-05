@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
-@Service("startAction")
+@Service
 @Slf4j
 public class StartAction implements ActionHandler {
 

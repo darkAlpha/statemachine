@@ -1,7 +1,5 @@
 package org.kipp.statemachine.engine.configuration;
 
-
-
 import org.kipp.statemachine.engine.merge.CollectListStrategy;
 import org.kipp.statemachine.engine.merge.FirstWriterWinsStrategy;
 import org.kipp.statemachine.engine.merge.LastWriterWinsStrategy;
@@ -16,20 +14,24 @@ import java.util.Map;
 @Configuration
 public class StateMachineConfig {
 
-    @Bean
-    public Map<String, FlowTemplate> flowTemplates(FlowTemplateLoader loader) {
-        return loader.loadAll();
-    }
+    public static final String FIRST = "first";
+    public static final String LAST = "last";
+    public static final String LIST = "list";
 
     @Value("${statemachine.merge-strategy:list}")
     private String strategyName;
 
     @Bean
+    public Map<String, FlowTemplate> flowTemplates(FlowTemplateLoader loader) {
+        return loader.loadAll();
+    }
+
+    @Bean
     public MergeStrategy mergeStrategy() {
         return switch (strategyName.toLowerCase()) {
-            case "first" -> new FirstWriterWinsStrategy();
-            case "last" -> new LastWriterWinsStrategy();
-            case "list" -> new CollectListStrategy();
+            case FIRST -> new FirstWriterWinsStrategy();
+            case LAST -> new LastWriterWinsStrategy();
+            case LIST -> new CollectListStrategy();
             default -> throw new IllegalArgumentException("Unknown strategy: " + strategyName);
         };
     }

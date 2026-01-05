@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
-@Service("finishAction")
+@Service
 @Slf4j
 public class FinishAction implements ActionHandler {
     @Override

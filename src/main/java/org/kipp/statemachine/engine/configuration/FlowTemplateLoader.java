@@ -19,11 +19,7 @@ import java.util.*;
 @Component
 @RequiredArgsConstructor
 public class FlowTemplateLoader {
-    private final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-
-    //Before
-    @Deprecated
-    private final ExpressionParser parserDeprecated = new SpelExpressionParser();
+    private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
 
     // ✅ parser with immediate compilation
     private final ExpressionParser parser = new SpelExpressionParser(
@@ -36,7 +32,7 @@ public class FlowTemplateLoader {
             Resource[] resources = resolver.getResources("classpath:flows/*.yaml");
             Map<String, FlowTemplate> templates = new HashMap<>();
             for (Resource resource : resources) {
-                FlowTemplate flow = mapper.readValue(resource.getInputStream(), FlowTemplate.class);
+                FlowTemplate flow = yamlMapper.readValue(resource.getInputStream(), FlowTemplate.class);
                 // 🔧 Pre-compile SpEL expressions for transitions
                 if (flow.getStates() != null) {
                     for (StateTemplate state : flow.getStates()) {

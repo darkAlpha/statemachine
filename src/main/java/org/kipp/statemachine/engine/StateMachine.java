@@ -8,6 +8,7 @@ import org.kipp.statemachine.engine.template.FlowTemplate;
 import org.kipp.statemachine.engine.template.StateTemplate;
 import org.kipp.statemachine.engine.template.TransitionTemplate;
 import org.springframework.context.ApplicationContext;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +27,10 @@ public class StateMachine {
     private final Map<String, FlowTemplate> templates;
     private final ApplicationContext ctx;
     private final MergeStrategy mergeStrategy;   // ✅ injected strategy
+    private final TaskExecutor taskExecutor;
+    private final StandardEvaluationContext evaluationContext;
 
+    @Deprecated
     // ✅ Executor for parallel states
     private final ExecutorService executor = Executors.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors() * 2
@@ -37,20 +41,18 @@ public class StateMachine {
                 .orElseThrow(() -> new IllegalArgumentException("Template not found: " + templateId));
 
         // ✅ One evaluation context per flow run
-        StandardEvaluationContext evalCtx = new StandardEvaluationContext();
-        evalCtx.setVariable(CONTEXT, context);
+//        StandardEvaluationContext evalCtx = new StandardEvaluationContext();
+        evaluationContext.setVariable(CONTEXT, context);
 
-        return executeState(template, template.getStart(), context, evalCtx);
+        return executeState(template, template.getStart(), context, evaluationContext);
     }
 
-    private String executeState(FlowTemplate template,
-                                String stateId,
-                                Map<String, Object> ctxMap,
-                                StandardEvaluationContext evalCtx) {
+    private String executeState(FlowTemplate template, String stateId, Map<String, Object> ctxMap, StandardEvaluationContext evalCtx) {
         log.info("➡️ State: {}", stateId);
 
         StateTemplate state = template.getStates()
-                .stream().filter(s -> s.getId().equals(stateId))
+                .stream()
+                .filter(s -> s.getId().equals(stateId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("State not found: " + stateId));
 
@@ -88,7 +90,7 @@ public class StateMachine {
                 futures.add(CompletableFuture.supplyAsync(() -> {
                     executeState(template, nextState, branchCtx, evalCtx);
                     return branchCtx;
-                }, executor));
+                }, taskExecutor));
             }
 
             List<Map<String, Object>> results = new ArrayList<>();
@@ -113,21 +115,18 @@ public class StateMachine {
         }
 
         // ✅ Sequential transitions using cached SpEL
-        for (TransitionTemplate t : state.getNext()) {
-            if (t.getCompiledWhen() == null) {
-                return executeState(template, t.getTo(), ctxMap, evalCtx);
+        for (TransitionTemplate transitionTemplate : state.getNext()) {
+            if (transitionTemplate.getCompiledWhen() == null) {
+                return executeState(template, transitionTemplate.getTo(), ctxMap, evalCtx);
             }
-            Boolean match = t.getCompiledWhen().getValue(evalCtx, Boolean.class);
+
+            Boolean match = transitionTemplate.getCompiledWhen().getValue(evalCtx, Boolean.class);
+
             if (Boolean.TRUE.equals(match)) {
-                return executeState(template, t.getTo(), ctxMap, evalCtx);
+                return executeState(template, transitionTemplate.getTo(), ctxMap, evalCtx);
             }
         }
 
         throw new IllegalStateException("No valid transition from state: " + stateId);
-    }
-
-    // ✅ Graceful shutdown
-    public void shutdown() {
-        executor.shutdown();
     }
 }
