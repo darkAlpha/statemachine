@@ -1,8 +1,8 @@
 package org.kipp.statemachine.engine.configuration;
 
-import org.kipp.statemachine.engine.merge.CollectListStrategy;
-import org.kipp.statemachine.engine.merge.FirstWriterWinsStrategy;
-import org.kipp.statemachine.engine.merge.LastWriterWinsStrategy;
+import org.kipp.statemachine.engine.merge.impl.CollectListStrategy;
+import org.kipp.statemachine.engine.merge.impl.FirstWriterWinsStrategy;
+import org.kipp.statemachine.engine.merge.impl.LastWriterWinsStrategy;
 import org.kipp.statemachine.engine.merge.MergeStrategy;
 import org.kipp.statemachine.engine.template.FlowTemplate;
 import org.springframework.beans.factory.annotation.Value;

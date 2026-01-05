@@ -1,5 +1,10 @@
 statemachine:
   merge-strategy: list # options: last, first, list
 
+flow:
+  locations:
+    - classpath:flows/*.yaml
+    - file:./config/flows/*.yaml
+
 server:
   port: 8082

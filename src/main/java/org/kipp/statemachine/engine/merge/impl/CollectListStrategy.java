@@ -1,4 +1,6 @@
-package org.kipp.statemachine.engine.merge;
+package org.kipp.statemachine.engine.merge.impl;
+
+import org.kipp.statemachine.engine.merge.MergeStrategy;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,4 +1,4 @@
-package org.kipp.statemachine.actions;
+package org.kipp.statemachine.service.actions;
 
 import lombok.extern.slf4j.Slf4j;
 import org.kipp.statemachine.engine.ActionHandler;
