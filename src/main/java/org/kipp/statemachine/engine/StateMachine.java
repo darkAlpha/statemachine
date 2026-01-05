@@ -58,8 +58,10 @@ public class StateMachine {
 
         try {
             if (state.getAction() != null) {
+                long startHandler = System.nanoTime();
                 ActionHandler handler = ctx.getBean(state.getAction(), ActionHandler.class);
                 handler.execute(ctxMap);
+                log.info("Handler: {} executed in {} ns", state.getAction(), (System.nanoTime() - startHandler));
             }
         } catch (Exception e) {
             log.error("❌ Error in state {}: {}", stateId, e.getMessage());

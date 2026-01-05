@@ -8,9 +8,13 @@ states:
     next:
       - to: parallel1
       - to: parallel2
+      - to: parallel3
 
   - id: parallel1
     action: parallelAction1
+
+  - id: parallel3
+    action: parallelAction3
 
   - id: parallel2
     action: parallelAction2
